@@ -3,7 +3,7 @@ import { createRef, RefObject, useEffect, useRef, useState } from "react"
 import Image from "@/node_modules/next/image";
 import Hand from '../public/hand.png'
 import { Avatar, Button, Divider, Input, List, ListItem, ListItemDecorator, Typography } from "@/node_modules/@mui/joy/index";
-
+import { Close } from "@/node_modules/@mui/icons-material/index";
 type Position = {
   x: number
   y: number
@@ -14,25 +14,46 @@ type Person = {
   objRef: any
 }
 
+enum GameState {
+  Waiting,
+  Selecting,
+  Completed,
+}
+
+const wait = async (time: number): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    setTimeout(() => {
+      resolve()
+    }, time);
+  })
+}
+
 export default function Home() {
 
-  const [names, setNames] = useState<Person[]>([]);
+  const [people, setPeople] = useState<Person[]>([]);
   const [name, setName] = useState<string>("");
 
-  const startRef = useRef<HTMLDivElement>(null)
-  const handRef = useRef<HTMLImageElement>(null)
+  const startRef = useRef<HTMLDivElement>(null);
+  const handRef = useRef<HTMLImageElement>(null);
+
+  const [game, setGame] = useState<GameState>(GameState.Waiting);
+
+  const [selected, setSelected] = useState<number | null>(null);
 
   const [handPosition, setHandPosition] = useState<Position>({
     x: 200,
     y: 200
-  })
+  });
 
   const random = () => {
-
+    const i = Math.floor(Math.random() * people.length);
+    setSelected(i);
+    setGame(GameState.Selecting)
+    simulateGhost(i)
   }
 
   const calculatePosition = (boxRef: any): Position => {
-    const box = (startRef.current! as any).getBoundingClientRect()
+    const box = (boxRef.current! as any).getBoundingClientRect()
     const hand = (handRef.current! as any).getBoundingClientRect()
     return {
       x: (box.x + (box.width / 2)) - (hand.width / 2),
@@ -40,19 +61,43 @@ export default function Home() {
     }
   }
 
+  const randomThenGoto = () => {
+    const target = Math.floor(Math.random() * people.length)
+    setHandPosition(calculatePosition(people[target].objRef))
+  }
+
+
+  const simulateGhost = async (target: number) => {
+    const trickMoveCount = Math.floor(people.length * 0.7)
+    randomThenGoto()
+    for (let i = 0; i < trickMoveCount; i++) {
+      await wait(1000)
+      randomThenGoto()
+    }
+    setHandPosition(calculatePosition(people[target].objRef))
+    await wait(4000)
+    setGame(GameState.Completed)
+  }
+
   useEffect(() => {
-    reset()
-  }, [startRef.current, names])
+    if (game === GameState.Waiting) {
+      reset()
+    }
+    else if (game === GameState.Completed) {
+      setHandPosition(calculatePosition(people[selected!].objRef));
+    }
+  }, [game, people])
 
   const reset = () => {
     if (!startRef) return
     setHandPosition(calculatePosition(startRef))
+    setGame(GameState.Waiting)
   }
 
-  const addName = () => {
+  const addPerson = () => {
     if (!name) return
     const newRef = createRef()
-    setNames(prev => {
+    setPeople(prev => {
       let tmp = [...prev]
       tmp.push({
         name: name,
@@ -61,6 +106,16 @@ export default function Home() {
       return tmp
     })
     setName("")
+    setGame(GameState.Waiting)
+  }
+
+  const removePerson = (i: number) => {
+    setPeople(prev => {
+      let tmp = [...prev]
+      tmp.splice(i, 1)
+      return tmp
+    })
+    setGame(GameState.Waiting)
   }
 
   return (
@@ -71,45 +126,31 @@ export default function Home() {
       <main className="min-h-screen px-20 py-6">
         <div className="m-2 z-1 relative">
           <div className="flex gap-3">
-            <Button className="" size="lg" variant="solid" color="primary" onClick={random}>
+            <Button className="" size="lg" variant="solid" color="primary" onClick={random} loading={game === GameState.Selecting}>
               Random
             </Button>
             <Button className="" size="lg" variant="outlined" color="primary" onClick={reset}>
               Reset
             </Button>
-            <input placeholder="x" onChange={(e) => {
-              setHandPosition(prev => {
-                return {
-                  x: parseFloat(e.target.value),
-                  y: prev.y,
-                }
-              })
-            }} />
-            <input placeholder="y" onChange={(e) => {
-              setHandPosition(prev => {
-                return {
-                  y: parseFloat(e.target.value),
-                  x: prev.x,
-                }
-              })
-            }} />
           </div>
           <div className="flex my-2 gap-3">
             <Typography className="my-auto">Add new person : </Typography>
             <Input variant="soft" placeholder="name..." value={name} onChange={(e: any) => {
               setName(e.target.value)
             }} />
-            <Button className="" size="lg" variant="solid" color="primary" onClick={addName}>
+            <Button className="" size="lg" variant="solid" color="primary" onClick={addPerson}>
               Add
             </Button>
           </div>
           <div className="grid grid-cols-3 my-2">
             {
-              names.map(n => {
+              people.map((n, k) => {
                 return (
-                  <div className="flex gap-3 mr-2 my-2 bg-white p-2">
-                    <Avatar>{n.name[0]}</Avatar>
+                  <div className="flex gap-3 mr-2 my-2 bg-white p-2" key={k}>
+                    <Avatar></Avatar>
                     <Typography className="my-auto">{n.name}</Typography>
+                    <div className="flex-grow"></div>
+                    <Close className="cursor-pointer my-auto" onClick={() => { removePerson(k) }} />
                   </div>
                 )
               })
@@ -121,8 +162,9 @@ export default function Home() {
           <div className="cell col-span-2 font-bold" ref={startRef}>
           </div>
           {
-            names.map((person, k) => {
-              return <Cell text={person.name} objRef={person.objRef} key={k} />
+            people.map((person, k) => {
+              const isSelected = game === GameState.Completed && k === selected
+              return <Cell selected={isSelected} text={person.name} objRef={person.objRef} key={k} />
             })
           }
         </div>
@@ -134,11 +176,12 @@ export default function Home() {
 interface CellProps {
   text: string
   objRef: RefObject<HTMLDivElement>
+  selected: boolean
 }
 
 const Cell: React.FC<CellProps> = (props: CellProps) => {
   return (
-    <div className="cell" ref={props.objRef}>
+    <div className={`cell ${props.selected ? "selected" : ""}`} ref={props.objRef}>
       {props.text}
     </div>
   )

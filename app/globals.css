@@ -109,8 +109,18 @@ table{
 
 
 .hand {
-  width: 300px;
-  height: 228px;
-  /* border: 10px solid red; */
-  transition: 1s;
+  width: 394px;
+  height: 300px;
+  transition: 3s;
+}
+
+.selected {
+  animation: blinkingBackground 2s infinite;
+}
+
+@keyframes blinkingBackground{
+  0%		{ background-color: #ffffff;}
+  25%		{ background-color: #e8e8e8;}
+  50%		{ background-color: #ffffff;}
+  75%		{ background-color: #e8e8e8;}
 }
