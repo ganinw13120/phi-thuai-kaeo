@@ -28,6 +28,8 @@ const wait = async (time: number): Promise<void> => {
   })
 }
 
+const COL = 4
+
 export default function Home() {
 
   const [people, setPeople] = useState<Person[]>([]);
@@ -162,10 +164,20 @@ export default function Home() {
           <div className="cell col-span-2 font-bold" ref={startRef}>
           </div>
           {
-            people.map((person, k) => {
-              const isSelected = game === GameState.Completed && k === selected
-              return <Cell selected={isSelected} text={person.name} objRef={person.objRef} key={k} />
-            })
+            (() => {
+              let cells = []
+              for (const person of people) {
+                const isSelected = game === GameState.Completed && cells.length === selected
+                cells.push(<Cell selected={isSelected} text={person.name} objRef={person.objRef} key={cells.length} />)
+              }
+              console.log(people.length)
+              const n = COL - ((people.length + 2) % COL)
+              if (n === COL) return cells
+              for (let i = 0; i < n; i++) {
+                cells.push(<Cell selected={false} text={""} objRef={null} key={cells.length} />)
+              }
+              return cells
+            })()
           }
         </div>
       </main></>
@@ -175,7 +187,7 @@ export default function Home() {
 
 interface CellProps {
   text: string
-  objRef: RefObject<HTMLDivElement>
+  objRef: RefObject<HTMLDivElement> | null
   selected: boolean
 }
 
