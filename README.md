@@ -4,6 +4,9 @@ Random name picker but Thai's style. Inspired on Thai's traditional game, phi th
 
 Create using NextJS.
 
+![alt text](https://github.com/ganinw13120/phi-thuai-kaeo/blob/main/example.png?raw=true)
+
+
 ## Getting Started
 
 First, run the development server:
